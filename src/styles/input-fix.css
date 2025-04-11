@@ -1,0 +1,68 @@
+/* 
+ * 全局输入框样式修复
+ * 解决ant-design-vue中输入框占位符与输入内容重叠的问题
+ */
+
+/* 当输入框有值时，隐藏占位符 */
+.ant-input:not(:placeholder-shown),
+.ant-input-affix-wrapper input:not(:placeholder-shown) {
+  z-index: 2;
+}
+
+/* 当输入框有值时，改变前缀图标颜色 */
+.has-value .ant-input-prefix .anticon,
+.ant-input-affix-wrapper:focus-within .ant-input-prefix .anticon {
+  color: #1890ff !important;
+}
+
+/* 输入框内容样式 - 确保文字可见 */
+.ant-input,
+.ant-input-affix-wrapper input {
+  color: rgba(0, 0, 0, 0.88) !important;
+}
+
+/* 确保占位符不会与输入内容重叠 */
+.ant-input:focus::placeholder,
+.ant-input:not(:placeholder-shown)::placeholder,
+.ant-input-affix-wrapper input:focus::placeholder,
+.ant-input-affix-wrapper input:not(:placeholder-shown)::placeholder {
+  color: transparent !important;
+  opacity: 0 !important;
+}
+
+/* 确保提示文本不会重叠 */
+.ant-form-item-explain-error {
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+/* 密码框特殊处理 */
+.ant-input-password {
+  position: relative;
+}
+
+.ant-input-password input {
+  position: relative;
+  z-index: 2;
+}
+
+/* 增强聚焦效果 */
+.ant-input:focus,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused {
+  border-color: #1890ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+}
+
+/* 清除按钮样式 */
+.ant-input-clear-icon:hover {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* 手机端适配 */
+@media (max-width: 480px) {
+  .ant-input,
+  .ant-input-affix-wrapper input {
+    font-size: 16px !important; /* 避免iOS缩放 */
+  }
+} 
