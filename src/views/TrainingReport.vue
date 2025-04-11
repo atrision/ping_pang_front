@@ -632,12 +632,12 @@ const handleSaveReport = async () => {
 
 // 导出报告为PDF
 const handleExportReport = async () => {
-  exportLoading.value = true
+  exportLoading.value = true;
   
   try {
     // 如果报告尚未保存，先保存报告
-    let reportId
-    if (!currentReportId.value) {
+    let reportId = currentReportId.value;
+    if (!reportId) {
       // 准备要保存的报告数据
       const reportData = {
         title: reportTitle.value,
@@ -649,42 +649,54 @@ const handleExportReport = async () => {
         dateRange: dateRange.value ? dateRange.value.map(date => date.format('YYYY-MM-DD')) : null,
         trainingTypes: trainingTypes.value,
         sessions: selectedSessions.value
-      }
+      };
       
       // 先保存报告
-      const saveResponse = await saveReport(reportData)
+      message.loading('保存报告中...', 1);
+      const saveResponse = await saveReport(reportData);
       
       if (saveResponse && saveResponse.code === 200) {
-        message.success('报告已保存，准备导出...')
-        reportId = saveResponse.data.id
-        currentReportId.value = reportId
+        message.success('报告已保存，准备导出...', 1);
+        reportId = saveResponse.data.id;
+        currentReportId.value = reportId;
       } else {
-        throw new Error(saveResponse?.message || '保存失败')
+        throw new Error(saveResponse?.message || '保存失败');
       }
-    } else {
-      reportId = currentReportId.value
     }
     
     // 使用API导出PDF
-    const response = await exportReportPDF(reportId)
+    message.loading('导出PDF中...', 2);
+    console.log('开始导出PDF, 报告ID:', reportId);
     
-    // 创建Blob并下载
-    const blob = new Blob([response], { type: 'application/pdf' })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${reportTitle.value || '训练报告'}.pdf`
-    link.click()
-    window.URL.revokeObjectURL(url)
-    
-    message.success('PDF导出成功！')
+    try {
+      const blob = await exportReportPDF(reportId);
+      
+      // 创建临时下载链接并点击
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${reportTitle.value || '训练报告'}_${reportId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // 清理
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+      
+      message.success('PDF导出成功！');
+    } catch (error) {
+      console.error('PDF导出错误:', error);
+      message.error(`导出PDF失败: ${error.message}`);
+    }
   } catch (error) {
-    console.error('导出报告错误:', error)
-    message.error('导出PDF失败: ' + (error.message || '未知错误'))
+    console.error('导出报告过程中发生错误:', error);
+    message.error('导出失败: ' + (error.message || '未知错误'));
   } finally {
-    exportLoading.value = false
+    exportLoading.value = false;
   }
-}
+};
 
 // 下一步
 const next = () => {

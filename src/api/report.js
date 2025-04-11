@@ -30,12 +30,35 @@ export function getReportTemplates() {
 
 // 保存报告
 export function saveReport(data) {
-  return post('/report/save', data)
+  return post('/api/report/save', data)
 }
 
 // 导出报告为PDF
 export function exportReportPDF(reportId) {
-  return get(`/report/export/pdf/${reportId}`, {}, { responseType: 'blob' })
+  return fetch(`/api/report/export/pdf/${reportId}`, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/pdf',
+    },
+  })
+  .then(response => {
+    if (!response.ok) {
+      return response.text().then(text => {
+        throw new Error(`导出PDF失败: ${response.status} ${response.statusText}\n${text}`);
+      });
+    }
+    
+    // 检查内容类型
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      // 如果是JSON，说明返回了错误信息
+      return response.json().then(json => {
+        throw new Error(`服务器返回了JSON而不是PDF: ${JSON.stringify(json)}`);
+      });
+    }
+    
+    return response.blob();
+  });
 }
 
 // 获取报告推荐建议
