@@ -27,7 +27,7 @@
       <a-col :span="24">
         <a-card :bordered="false" :loading="loading">
           <!-- 步骤1：选择模板 -->
-          <div v-if="currentStep === 0">
+          <div v-if="currentStep === 0" :key="`template-step-${selectedTemplate}`">
             <a-radio-group v-model="selectedTemplate" button-style="solid" style="margin-bottom: 20px">
               <a-radio-button value="standard">标准模板</a-radio-button>
               <a-radio-button value="detailed">详细模板</a-radio-button>
@@ -40,7 +40,7 @@
                 <a-card 
                   hoverable 
                   :class="['template-card', selectedTemplate === template.id ? 'selected-template' : '']"
-                  @click="selectedTemplate = template.id"
+                  @click="handleTemplateSelect(template.id)"
                 >
                   <div class="template-icon-container">
                     <div class="template-icon" :style="{ backgroundColor: template.color }">
@@ -50,6 +50,9 @@
                   <div class="template-info">
                     <h3>{{ template.name }}</h3>
                     <p>{{ template.description }}</p>
+                    <p v-if="selectedTemplate === template.id" style="color:#1890ff; font-weight:bold; margin-top:8px;">
+                      ✓ 当前选中
+                    </p>
                   </div>
                 </a-card>
               </a-col>
@@ -92,30 +95,41 @@
                 </a-row>
                 
                 <a-form-item label="选择分析会话">
-                  <div class="session-selection-header">
-                    <a-radio-group v-model="selectionMode" style="margin-bottom: 16px">
-                      <a-radio-button value="single">单选模式</a-radio-button>
-                      <a-radio-button value="multiple">多选模式</a-radio-button>
-                    </a-radio-group>
+                  <!-- 添加全选按钮和自定义选择操作 -->
+                  <div style="margin-bottom: 16px; display: flex; gap: 10px;">
                     <a-button 
-                      v-if="selectionMode === 'multiple'" 
                       type="link" 
                       @click="selectAllSessions"
-                      style="margin-left: 16px"
                     >
                       全选
                     </a-button>
+                    <a-button
+                      type="link"
+                      @click="clearAllSelections"
+                    >
+                      清除全部
+                    </a-button>
+                    <span v-if="selectedSessions.length > 0" style="margin-left: auto; color: #1890ff;">
+                      已选择 {{ selectedSessions.length }} 项
+                    </span>
                   </div>
                   <a-table
                     :columns="sessionColumns"
                     :data-source="sessionData"
                     :row-selection="{ 
-                      type: selectionMode === 'single' ? 'radio' : 'checkbox',
+                      type: 'checkbox',
                       selectedRowKeys: selectedSessions, 
-                      onChange: onSessionSelectionChange 
+                      onChange: onSessionSelectionChange,
+                      getCheckboxProps: record => ({
+                        name: record.id?.toString(),
+                        disabled: false
+                      }),
+                      columnWidth: '60px',
+                      fixed: true
                     }"
                     :pagination="{ pageSize: 5 }"
                     size="small"
+                    rowKey="id"
                   >
                     <template #bodyCell="{ column, record }">
                       <template v-if="column.dataIndex === 'trainingType'">
@@ -345,6 +359,32 @@ const currentReportId = ref(null) // 当前报告ID
 
 // 步骤1：模板选择
 const selectedTemplate = ref('standard')
+
+// 处理模板选择
+const handleTemplateSelect = (templateId) => {
+  console.log("选择模板，之前:", selectedTemplate.value, "现在:", templateId);
+  // 确保值类型一致性
+  selectedTemplate.value = templateId;
+  // 添加额外的UI反馈
+  // message.success(`已选择${templateList.find(t => t.id === templateId)?.name || templateId}`);
+  
+  // 强制更新视图并记录日志
+  nextTick(() => {
+    console.log("视图已更新，当前选中模板:", selectedTemplate.value);
+    // 打印所有模板卡片的状态
+    templateList.forEach(t => {
+      console.log(`模板[${t.id}]是否选中: ${selectedTemplate.value === t.id}`);
+    });
+  });
+};
+
+// // 使用函数判断模板是否被选中，便于调试
+// const isTemplateSelected = (templateId) => {
+//   const result = selectedTemplate.value === templateId;
+//   console.log(`检查模板[${templateId}]是否选中: ${result}, 当前选中: ${selectedTemplate.value}`);
+//   return result;
+// };
+
 const templateList = [
   {
     id: 'standard',
@@ -447,24 +487,60 @@ const getScoreStatus = (score) => {
   return 'exception'
 }
 
-// 在 script setup 部分添加
-const selectionMode = ref('single')
-
-// 全选所有会话
+// 实现全选功能
 const selectAllSessions = () => {
-  selectedSessions.value = sessionData.value.map(record => record.id)
-}
+  console.log('执行全选，当前数据条数:', sessionData.value.length);
+  // 确保每个项目都有ID
+  if (sessionData.value && sessionData.value.length > 0) {
+    const ids = sessionData.value.map(item => item.id);
+    console.log('全选的ID列表:', ids);
+    selectedSessions.value = ids;
+  } else {
+    console.warn('无可选会话数据');
+  }
+};
+
+// 清除所有选择
+const clearAllSelections = () => {
+  console.log('清除所有选择');
+  selectedSessions.value = [];
+};
 
 // 修改会话选择变化处理函数
-const onSessionSelectionChange = (selectedRowKeys) => {
-  if (selectionMode.value === 'single') {
-    // 单选模式下只保留最后选择的一个
-    selectedSessions.value = selectedRowKeys.slice(-1)
-  } else {
-    // 多选模式下保持所有选择
-    selectedSessions.value = selectedRowKeys
-  }
-}
+const onSessionSelectionChange = (selectedRowKeys, selectedRows) => {
+  console.log('选择变化:', selectedRowKeys, '选中行数:', selectedRows.length);
+  // 直接保存用户的选择
+  selectedSessions.value = selectedRowKeys;
+};
+
+// 填充模拟数据的方法
+const fetchTrainingSessions = () => {
+  loading.value = true;
+  
+  // 这里应该调用API获取数据
+  // 模拟数据
+  setTimeout(() => {
+    sessionData.value = Array(10).fill().map((_, index) => {
+      const types = ['forehand', 'backhand', 'serve', 'footwork', 'match'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      const date = new Date();
+      date.setDate(date.getDate() - index * 2);
+      
+      return {
+        id: index + 1, // 确保每条记录有唯一ID
+        date: formatDate(date, 'YYYY-MM-DD'),
+        trainingType: type,
+        duration: Math.floor(Math.random() * 60) + 30,
+        score: Math.floor(Math.random() * 30) + 70,
+        status: Math.random() > 0.3 ? '已分析' : '未分析'
+      };
+    });
+    
+    console.log('加载了模拟数据，共', sessionData.value.length, '条');
+    selectedSessions.value = []; // 初始化为空，确保不会自动选中
+    loading.value = false;
+  }, 1000);
+};
 
 // 添加章节
 const addSection = () => {
@@ -708,33 +784,6 @@ const prev = () => {
   currentStep.value--
 }
 
-// 获取训练会话数据
-const fetchTrainingSessions = () => {
-  loading.value = true
-  
-  // 这里应该调用API获取数据
-  // 模拟数据
-  setTimeout(() => {
-    sessionData.value = Array(10).fill().map((_, index) => {
-      const types = ['forehand', 'backhand', 'serve', 'footwork', 'match']
-      const type = types[Math.floor(Math.random() * types.length)]
-      const date = new Date()
-      date.setDate(date.getDate() - index * 2)
-      
-      return {
-        id: index + 1,
-        date: formatDate(date, 'YYYY-MM-DD'),
-        trainingType: type,
-        duration: Math.floor(Math.random() * 60) + 30,
-        score: Math.floor(Math.random() * 30) + 70,
-        status: Math.random() > 0.3 ? '已分析' : '未分析'
-      }
-    })
-    
-    loading.value = false
-  }, 1000)
-}
-
 // 章节标题更新辅助函数
 const updateSectionTitle = (index, value) => {
   if (reportSections.value[index]) {
@@ -789,6 +838,25 @@ const updateReportSuggestions = (value) => {
 
 onMounted(() => {
   fetchTrainingSessions()
+  
+  // 检查初始模板选择状态
+  console.log("组件挂载完成，当前选中模板:", selectedTemplate.value)
+  const initialTemplate = templateList.find(t => t.id === selectedTemplate.value)
+  console.log("初始选中模板信息:", initialTemplate?.name)
+  
+  // 延迟检查DOM状态，确保渲染完成
+  setTimeout(() => {
+    const radioButtons = document.querySelectorAll('.ant-radio-button-checked')
+    const selectedCards = document.querySelectorAll('.selected-template')
+    console.log(`DOM状态: 选中的Radio按钮数量: ${radioButtons.length}, 选中的卡片数量: ${selectedCards.length}`)
+    if (radioButtons.length === 1) {
+      console.log("选中的Radio按钮文本:", radioButtons[0].textContent.trim())
+    }
+    if (selectedCards.length === 1) {
+      const cardTitle = selectedCards[0].querySelector('.template-info h3')?.textContent
+      console.log("选中的卡片标题:", cardTitle)
+    }
+  }, 500)
 })
 </script>
 
@@ -801,10 +869,30 @@ onMounted(() => {
   margin-bottom: 16px;
   transition: all 0.3s;
   border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
 }
 
 .selected-template {
   border-color: #1890ff;
+  box-shadow: 0 0 10px rgba(24, 144, 255, 0.5);
+  background-color: #e6f7ff;
+  transform: translateY(-3px);
+}
+
+/* 清晰的选中指示器 */
+.selected-template::after {
+  content: "已选择";
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: #1890ff;
+  color: white;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  z-index: 2;
 }
 
 .template-icon-container {
