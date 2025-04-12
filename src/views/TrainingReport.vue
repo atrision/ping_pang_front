@@ -241,7 +241,7 @@
               <a-form-item>
                 <a-button type="primary" @click="generateAiContent">
                   <template #icon><RobotOutlined /></template>
-                  使用文心大模型生成内容
+                  使用千帆大模型生成内容
                 </a-button>
               </a-form-item>
             </a-form>

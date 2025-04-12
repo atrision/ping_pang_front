@@ -27,7 +27,7 @@
           <template #cover>
             <div class="welcome-banner">
               <h1>欢迎使用乒乓球运动分析系统</h1>
-              <p>基于百度飞桨PaddlePaddle深度学习平台和百度千帆文心大模型的智能乒乓球分析系统</p>
+              <p>基于百度飞桨PaddlePaddle深度学习平台和百度千帆千帆大模型的智能乒乓球分析系统</p>
               <a-button type="primary" size="large" class="quick-start-btn">
                 <template #icon><ThunderboltOutlined /></template>
                 快速入门指南
